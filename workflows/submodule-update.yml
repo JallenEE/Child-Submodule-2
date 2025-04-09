@@ -1,0 +1,67 @@
+---
+name: Submodule Updates
+
+#############################
+# Trigger the job on PR merge #
+#############################
+on:
+  pull_request:
+    types: [closed] # Trigger only when a pull request is closed
+
+###############
+# Set the Job #
+###############
+jobs:
+  build:
+    name: Submodule update
+    runs-on: ubuntu-latest
+    env:
+      PARENT_REPOSITORY: 'JallenEE/Test_Submodule'
+      CHECKOUT_BRANCH: 'main'
+      PR_AGAINST_BRANCH: 'main'
+      OWNER: 'JallenEE'
+
+    steps:
+      ##########################
+      # Check if PR was merged #
+      ##########################
+      - name: Check if PR was merged
+        uses: actions/github-script@v6
+        id: check_merge
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr.merged) {
+              core.setOutput("continue", "false");
+              console.log("Pull request was closed but not merged. Exiting.");
+            } else {
+              core.setOutput("continue", "true");
+              console.log("Pull request was merged. Proceeding.");
+            }
+          result-encoding: string
+
+      ##########################
+      # Exit if not merged     #
+      ##########################
+      - name: Exit if not merged
+        if: steps.check_merge.outputs.continue == 'false'
+        run: exit 0
+
+      ##########################
+      # Checkout the code base #
+      ##########################
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      ####################################
+      # Run the action against code base #
+      ####################################
+      - name: run action
+        id: run_action
+        uses: releasehub-com/github-action-create-pr-parent-submodule@v1
+        with:
+          github_token: ${{ secrets.RELEASE_HUB_SECRET }}
+          parent_repository: ${{ env.PARENT_REPOSITORY }}
+          checkout_branch: ${{ env.CHECKOUT_BRANCH }}
+          pr_against_branch: ${{ env.PR_AGAINST_BRANCH }}
+          owner: ${{ env.OWNER }}
